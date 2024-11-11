@@ -24,6 +24,46 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const shopCollection = client.db('shopDB').collection('shop')
+    const userCollection = client.db('userDB').collection('users')
+    const cartCollection = client.db('cartDB').collection('cart')
+
+    app.get('/shop', async(req, res) => {
+      const result = await shopCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.get('/cart', async(req, res) => {
+      const result = await cartCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      // console.log(user);
+      const query = {email: user.email}
+      // console.log(query);
+      const isExist = await userCollection.findOne(query)
+      if(isExist){
+        return res.send({
+          message: "email is already exist",
+          insertedId: null,
+        });
+      }
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+
+    app.post('/cart', async(req, res) => {
+      const data = req.body;
+      console.log(data);
+      const result = await cartCollection.insertOne(data)
+      res.send(result)
+    })
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
