@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
@@ -31,6 +32,11 @@ async function run() {
 
     app.get('/shop', async(req, res) => {
       const result = await shopCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.get('/users', async(req, res) => {
+      const result = await userCollection.find().toArray();
       res.send(result)
     })
 
@@ -69,6 +75,18 @@ async function run() {
       const data = req.body;
       // console.log(data);
       const result = await cartCollection.insertOne(data)
+      res.send(result)
+    })
+
+    app.patch('/users/admin/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedAdmin = {
+        $set: {
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter, updatedAdmin)
       res.send(result)
     })
 
