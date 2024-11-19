@@ -87,10 +87,30 @@ async function run() {
       res.send(result);
     });
 
+    app.post('/shop', async(req, res) => {
+      const user = req.body;
+      const result = await shopCollection.insertOne(user);
+      res.send(result)
+    })
+
     app.get("/shop", async (req, res) => {
       const result = await shopCollection.find().toArray();
       res.send(result);
     });
+
+    app.get('/shop/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await shopCollection.findOne(query);
+      res.send(result)
+    })
+
+    app.delete('/shop/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await shopCollection.deleteOne(query);
+      res.send(result)
+    })
 
     app.get("/users", verifyToken,verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
@@ -109,6 +129,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.delete("/users/:id",verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
       res.send(result);
     });
 
