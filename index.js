@@ -87,6 +87,12 @@ async function run() {
       res.send(result);
     });
 
+    app.post('/newarrival',async(req, res) => {
+      const user = req.body;
+      const result = await newArrivalCollection.insertOne(user)
+      res.send(result)
+    })
+
     app.post('/shop', async(req, res) => {
       const user = req.body;
       const result = await shopCollection.insertOne(user);
@@ -102,6 +108,25 @@ async function run() {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)}
       const result = await shopCollection.findOne(query);
+      res.send(result)
+    })
+
+    app.patch('/shop/:id', async(req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updateItem = {
+        $set: {
+          title: item?.title,
+          image: item?.image,
+          price: item?.price,
+          category: item?.category,
+          description: item?.description,
+          discount: item?.discount,
+          stock: item?.stock
+        }
+      }
+      const result = await shopCollection.updateOne(filter, updateItem)
       res.send(result)
     })
 
