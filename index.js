@@ -93,6 +93,16 @@ async function run() {
       res.send(result)
     })
 
+    app.patch('/newarrival/:id', async(req, res) => {
+      const id = req.params.id;
+      const item = req.body;
+      const result = await newArrivalCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: item }
+      );
+      res.send(result)
+    })
+
     app.post('/shop', async(req, res) => {
       const user = req.body;
       const result = await shopCollection.insertOne(user);
