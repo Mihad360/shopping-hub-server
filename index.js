@@ -8,7 +8,11 @@ require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://shopping-hub-mu.vercel.app", "http://localhost:5173"],
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,18 +27,16 @@ const client = new MongoClient(uri, {
   },
 });
 
+const shopCollection = client.db("shopDB").collection("shop");
+const userCollection = client.db("shopDB").collection("users");
+const cartCollection = client.db("shopDB").collection("cart");
+const checkoutCollection = client.db("shopDB").collection("checkout");
+const newArrivalCollection = client.db("shopDB").collection("newarrival");
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-
-    const shopCollection = client.db("shopDB").collection("shop");
-    const userCollection = client.db("userDB").collection("users");
-    const cartCollection = client.db("cartDB").collection("cart");
-    const checkoutCollection = client.db("checkoutDB").collection("checkout");
-    const newArrivalCollection = client
-      .db("newArrivalDB")
-      .collection("newarrival");
+    // client.connect();
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -50,7 +52,7 @@ async function run() {
         return res.status(401).send({ message: "unauthorized access" });
       }
       const token = await req.headers.authorization.split(" ")[1];
-      await jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: "unauthorized access" });
         }
@@ -62,7 +64,6 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
-      // console.log(email, query);
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === "admin";
       if (!isAdmin) {
@@ -70,42 +71,6 @@ async function run() {
       }
       next();
     };
-
-    app.get("/users/admin/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      // console.log(email, req.decoded.email);
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      let admin = false;
-      if (user) {
-        admin = user?.role === "admin";
-      }
-      res.send({ admin });
-    });
-
-    app.get("/newarrival", async (req, res) => {
-      const result = await newArrivalCollection.find().toArray();
-      res.send(result);
-    });
-
-    app.post("/newarrival", async (req, res) => {
-      const user = req.body;
-      const result = await newArrivalCollection.insertOne(user);
-      res.send(result);
-    });
-
-    app.patch("/newarrival/:id", async (req, res) => {
-      const id = req.params.id;
-      const item = req.body;
-      const result = await newArrivalCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: item }
-      );
-      res.send(result);
-    });
 
     app.post("/shop", async (req, res) => {
       const user = req.body;
@@ -156,10 +121,23 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
     app.get("/cart", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
-      // console.log(query);
       const result = await cartCollection.find(query).toArray();
       res.send(result);
     });
@@ -180,9 +158,7 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      // console.log(user);
       const query = { email: user.email };
-      // console.log(query);
       const isExist = await userCollection.findOne(query);
       if (isExist) {
         return res.send({
@@ -196,7 +172,6 @@ async function run() {
 
     app.post("/cart", async (req, res) => {
       const data = req.body;
-      // console.log(data);
       const result = await cartCollection.insertOne(data);
       res.send(result);
     });
@@ -210,6 +185,27 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(filter, updatedAdmin);
+      res.send(result);
+    });
+
+    app.get("/newarrival", async (req, res) => {
+      const result = await newArrivalCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/newarrival", async (req, res) => {
+      const user = req.body;
+      const result = await newArrivalCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.patch("/newarrival/:id", async (req, res) => {
+      const id = req.params.id;
+      const item = req.body;
+      const result = await newArrivalCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: item }
+      );
       res.send(result);
     });
 
@@ -257,6 +253,19 @@ async function run() {
           },
         });
 
+        // const resData = {
+        //   trans_id: initiateData.tran_id,
+        //   cus_name: initiateData.cus_name,
+        //   cus_email: initiateData.cus_email,
+        //   checkout_bill: initiateData.total_amount,
+        //   cus_phone: initiateData.cus_phone,
+        //   checkout_date: checkoutInfo.date,
+        //   cus_address: checkoutInfo.address,
+        //   cartId: checkoutInfo.cartId,
+        //   shopitemsId: checkoutInfo.shopitemsId,
+        //   shopitems_Id: checkoutInfo.shopitems_Id,
+        //   status: "pending",
+        // };
         const resData = {
           trans_id: initiateData.tran_id,
           cus_name: initiateData.cus_name,
@@ -265,6 +274,9 @@ async function run() {
           cus_phone: initiateData.cus_phone,
           checkout_date: checkoutInfo.date,
           cus_address: checkoutInfo.address,
+          cartId: checkoutInfo.cartId.map((id) => new ObjectId(id)),
+          shopitemsId: checkoutInfo.shopitemsId,
+          shopitems_Id: checkoutInfo.shopitems_Id.map((id) => new ObjectId(id)),
           status: "pending",
         };
 
@@ -282,7 +294,6 @@ async function run() {
 
     app.post("/success-checkout", async (req, res) => {
       const successData = req.body;
-      console.log(successData);
       if (successData.status !== "VALID") {
         throw new Error("failed payment or unauthorized payment");
       }
@@ -295,11 +306,10 @@ async function run() {
         },
       };
       const result = await checkoutCollection.updateOne(query, update);
-      const findEmail = await checkoutCollection.findOne(query)
+      const findEmail = await checkoutCollection.findOne(query);
       const email = findEmail?.cus_email;
-      if(email){
-        const queryEmail = {email: email}
-        console.log(queryEmail);
+      if (email) {
+        const queryEmail = { email: email };
         await cartCollection.deleteMany(queryEmail);
       }
 
@@ -320,6 +330,11 @@ async function run() {
       }
     });
 
+    app.get("/checkout", async (req, res) => {
+      const result = await checkoutCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get("/checkout-list", async (req, res) => {
       const query = { cus_email: req.query.email };
       // console.log(query);
@@ -327,11 +342,125 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const shopItems = await shopCollection.estimatedDocumentCount();
+      const checkouts = await checkoutCollection.estimatedDocumentCount();
+
+      const result = await checkoutCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: "$checkout_bill",
+              },
+            },
+          },
+        ])
+        .toArray();
+
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+      res.send({ shopItems, users, checkouts, revenue });
+    });
+
+    app.get("/order-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await checkoutCollection
+        .aggregate([
+          {
+            $unwind: "$shopitems_Id", // Unwind the array
+          },
+          {
+            $lookup: {
+              from: "shop",
+              localField: "shopitems_Id",
+              foreignField: "_id",
+              as: "shopItems",
+            },
+          },
+          {
+            $unwind: "$shopItems",
+          },
+          {
+            $group: {
+              _id: "$shopItems.category",
+              quantity: {
+                $sum: 1,
+              },
+              revenue: { $sum: "$shopItems.price" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              category: "$_id",
+              quantity: "$quantity",
+              revenue: "$revenue",
+            },
+          },
+        ])
+        .toArray();
+
+      res.send(result);
+    });
+
+    app.get("/user-stats", verifyToken, async (req, res) => {
+      const userEmail = req.decoded.email;
+      console.log(userEmail);
+      const checkoutCount = await checkoutCollection.countDocuments({
+        cus_email: userEmail,
+      });
+      const userData = await checkoutCollection
+        .aggregate([
+          {
+            $match: {
+              cus_email: userEmail,
+            },
+          },
+          {
+            $unwind: "$shopitems_Id",
+          },
+          {
+            $lookup: {
+              from: "shop",
+              localField: "shopitems_Id",
+              foreignField: "_id",
+              as: "userShopItems",
+            },
+          },
+          {
+            $unwind: "$userShopItems",
+          },
+          {
+            $group: {
+              _id: "$userShopItems.category",
+              quantity: {
+                $sum: 1,
+              },
+              revenue: { $sum: "$userShopItems.price" },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              category: "$_id",
+              quantity: "$quantity",
+              revenue: "$revenue",
+            },
+          },
+        ])
+        .toArray();
+
+      res.send({ userData, checkoutCount });
+    });
+
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
